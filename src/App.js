@@ -1,126 +1,157 @@
-import { useState, useEffect } from "react";
+
+import React, { useState, useEffect } from "react";
 import "./App.css";
+import axios from 'axios';
+import { saveAs } from 'file-saver';
+import ExcelUploader from "./ExcelUpload";
 
 function App() {
-  const [texte, setTexte] = useState("");
-  const [texteRest, setTexteRest] = useState(160);
-  const [dateEnvoi, setDateEnvoi] = useState(""); // Date d'envoi
-  const [heureEnvoi, setHeureEnvoi] = useState(""); // Heure d'envoi
-  const [dateTimeEnvoi, setDateTimeEnvoi] = useState(""); // Date et heure d'envoi
-  const [messageEnvoye, setMessageEnvoye] = useState(false);
+  const [message, setMessage] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [text, setText] = useState("");
+  const [textRemaining, setTextRemaining] = useState(160);
+  const [schedule, setSchedule] = useState({ date: "", time: "" });
+  const [messageSent, setMessageSent] = useState(false);
+  const [sender, setSender] = useState('');
+  const [status, setStatus] = useState('');
+  const [invalidNumbers, setInvalidNumbers] = useState([]);
+  const [contactNumbers, setContactNumbers] = useState([]);
 
-  const handleChangeTexte = (e) => {
-    setTexte(e.target.value);
-    setMessageEnvoye(false);
+  const handleChangeText = (e) => {
+    const inputText = e.target.value;
+    setText(inputText);
+    setTextRemaining(160 - inputText.length);
+    setMessageSent(false);
+    e.target.style.color = inputText.length > 160 ? "red" : "black";
   };
 
-  const handleChangeDateEnvoi = (e) => {
-    setDateEnvoi(e.target.value);
-    setMessageEnvoye(false);
+  const handleScheduleChange = (field) => (e) => {
+    setSchedule({ ...schedule, [field]: e.target.value });
+    setMessageSent(false);
   };
 
-  const handleChangeHeureEnvoi = (e) => {
-    setHeureEnvoi(e.target.value);
-    setMessageEnvoye(false);
+  const planSending = (e) => {
+    e.preventDefault();
+    const dateTime = `${schedule.date}T${schedule.time}`;
+    setDateTimeToSend(dateTime);
   };
 
-  const planifierEnvoi = (e) => {
-    e.preventDefault(); // Empêcher le rechargement de la page
+  const sendSMSBatch = async (batch) => {
+    const validPrefixedNumbers = validateAndPrefixNumbers(batch);
 
-    if (dateEnvoi && heureEnvoi && texte) {
-      const dateTime = `${dateEnvoi}T${heureEnvoi}`;
-      setDateTimeEnvoi(dateTime);
+    // Si aucun numéro valide, arrêter le traitement de ce lot
+    if (validPrefixedNumbers.length === 0) {
+      setStatus('Aucun numéro valide dans ce lot.');
+      return;
+    }
+
+    const url = 'messages';
+    const data = new URLSearchParams({
+      username: 'bernabeci', // Remplacez par vos informations d'identification
+      password: 'Ad6Cxz9aGYpy', // Remplacez par vos informations d'identification
+      msisdn: validPrefixedNumbers.join(','),
+      msg: message,
+      sender: sender
+    });
+
+    if (scheduledTime !== '') {
+      data.append('timetosend', scheduledTime);
+    }
+
+    try {
+      const response = await axios.post(url, data.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+
+      if (response.status === 200) {
+        setStatus(`SMS envoyé avec succès au lot : ${response.data}`);
+        console.log(response.data);
+      } else {
+        setStatus(`Échec de l'envoi du SMS. Code d'erreur : ${response.status}`);
+        console.log('erreur ',response.data);
+      }
+    } catch (error) {
+      setStatus(`Erreur lors de l'envoi des SMS : ${error}`);
+      console.log('erreur ',error);
+    }
+    if (invalidNumbers.length > 0) {
+      exportInvalidNumbers();
     }
   };
 
-  const verifierEnvoi = () => {
-    const maintenant = new Date();
-    const dateEnvoiComplet = new Date(dateTimeEnvoi);
-
-    if (maintenant >= dateEnvoiComplet && texte) {
-      setMessageEnvoye(true);
-      console.log(`Message envoyé le ${dateEnvoi} à ${heureEnvoi}: ${texte}`);
+  const sendSMS = async () => {
+    if (!message || !sender) {
+      alert("Veuillez fournir tous les détails nécessaires.");
+      return;
     }
+
+    // Envoyer les SMS par lots de 500
+    for (let i = 0; i < contactNumbers.length; i += 500) {
+      const batch = contactNumbers.slice(i, i + 500);
+      await sendSMSBatch(batch); // Vous pouvez ajouter une gestion d'erreur ici si nécessaire
+      console.log('batch ',batch);
+    }
+    setStatus("Tous les SMS ont été planifiés pour envoi!");
   };
 
   useEffect(() => {
-    if (dateTimeEnvoi !== "" && !messageEnvoye) {
-      const interval = setInterval(() => {
-        verifierEnvoi();
-      }, 1000);
+    // ... useEffect logic for sending messages based on the schedule
+  }, [schedule, messageSent, text]);
 
-      return () => clearInterval(interval);
-    }
-  }, [dateTimeEnvoi, messageEnvoye, texte]);
+  const validateAndPrefixNumbers = (numbers) => {
+    const validNumbers = [];
+    const invalidNums = [];
 
-  const handleChange = (e) => {
-    const contenu = e.target.value;
-    const nbreChar = 160 - contenu.length;
-    setTexte(contenu);
+    numbers.forEach(number => {
+      if (
+        number.length === 10 &&
+        (number.startsWith('01') || number.startsWith('05') || number.startsWith('07'))
+      ) {
+        validNumbers.push(`+225${number}`);
+      } else {
+        invalidNums.push(number);
+      }
+    });
 
-    if (nbreChar < 0) {
-      e.target.style.color = "red";
-    } else {
-      e.target.style.color = "black";
-    }
+    setInvalidNumbers(invalidNumbers => [...invalidNumbers, ...invalidNums]);
+    return validNumbers;
+  };
 
-    setTexteRest(nbreChar);
+  const exportInvalidNumbers = () => {
+    const blob = new Blob([invalidNumbers.join('\n')], { type: 'text/plain;charset=utf-8' });
+    saveAs(blob, 'invalid_numbers.txt');
   };
 
   return (
     <div className="App p-5">
-      <h1 className="">SMS BERNABE</h1>
-      <form onSubmit={planifierEnvoi}>
+      <h1>SMS BERNABE</h1>
+      <form onSubmit={sendSMS}>
         <textarea
           className="form-control mb-3"
-          placeholder="Entrez le message à envoyer ici"
+          placeholder="Enter your message here"
           cols={60}
           rows={10}
-          value={texte}
-          onChange={handleChange}
-          style={{ color: texte.length > 160 ? "red" : "black" }}
-        ></textarea>
-        <label className="form-label" for="fichier">
-          Liste des destinataires :
-        </label>
-
-        <input id="fichier" type="file" className="form-control"></input>
-        <label className="form-label" for="date">
-          Date d'envoi :
-        </label>
+          value={text}
+          onChange={handleChangeText}
+        />
+        <ExcelUploader onContactsLoaded={setContactNumbers} />
         <input
-          id="date"
           type="date"
           className="form-control"
-          value={dateEnvoi}
-          onChange={handleChangeDateEnvoi}
+          value={schedule.date}
+          onChange={handleScheduleChange('date')}
         />
-        <label className="form-label" for="heure">
-          Heure d'envoi :
-        </label>
         <input
-          id="heure"
           type="time"
-          value={heureEnvoi}
           className="form-control"
-          onChange={handleChangeHeureEnvoi}
-        ></input>
-
+          value={schedule.time}
+          onChange={handleScheduleChange('time')}
+        />
         <button className="btn btn-success m-3" type="submit">
-          Plannifier envoi
+          Schedule Send
         </button>
-        {/* <input
-          type="submit"
-          className="btn btn-primary"
-          value={"Envoyer le message"}
-        ></input> */}
-        {dateTimeEnvoi && !messageEnvoye && (
-          <p>Planification de l'envoi pour le {dateEnvoi} à {heureEnvoi}</p>
-          // Message affiché lors de la planification de l'envoi avec la date et l'heure prévues
-        )}
-        {messageEnvoye && (
-          <p>Message envoyé le {dateEnvoi} à {heureEnvoi}</p>
-          // Message affiché une fois le message envoyé avec la date et l'heure d'envoi
+        {messageSent && (
+          <p>Message scheduled for {schedule.date} at {schedule.time}</p>
         )}
       </form>
     </div>
