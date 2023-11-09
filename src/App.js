@@ -1,40 +1,14 @@
-
-import React, { useState, useEffect } from "react";
-import "./App.css";
+import React, { useState } from 'react';
 import axios from 'axios';
 import { saveAs } from 'file-saver';
-import ExcelUploader from "./ExcelUpload";
+import ExcelUploader from "./ExcelUpload"; // Assurez-vous que ce composant est correctement importé
 
 function App() {
   const [message, setMessage] = useState('');
-  const [scheduledTime, setScheduledTime] = useState('');
-  const [text, setText] = useState("");
-  const [textRemaining, setTextRemaining] = useState(160);
   const [schedule, setSchedule] = useState({ date: "", time: "" });
-  const [messageSent, setMessageSent] = useState(false);
-  const [sender, setSender] = useState('');
   const [status, setStatus] = useState('');
-  const [invalidNumbers, setInvalidNumbers] = useState([]);
   const [contactNumbers, setContactNumbers] = useState([]);
-
-  const handleChangeText = (e) => {
-    const inputText = e.target.value;
-    setText(inputText);
-    setTextRemaining(160 - inputText.length);
-    setMessageSent(false);
-    e.target.style.color = inputText.length > 160 ? "red" : "black";
-  };
-
-  const handleScheduleChange = (field) => (e) => {
-    setSchedule({ ...schedule, [field]: e.target.value });
-    setMessageSent(false);
-  };
-
-  const planSending = (e) => {
-    e.preventDefault();
-    const dateTime = `${schedule.date}T${schedule.time}`;
-    setDateTimeToSend(dateTime);
-  };
+  const [invalidNumbers, setInvalidNumbers] = useState([]);
 
   const sendSMSBatch = async (batch) => {
     const validPrefixedNumbers = validateAndPrefixNumbers(batch);
@@ -51,11 +25,11 @@ function App() {
       password: 'Ad6Cxz9aGYpy', // Remplacez par vos informations d'identification
       msisdn: validPrefixedNumbers.join(','),
       msg: message,
-      sender: sender
+      sender: 'MrBRICOLAGE'
     });
 
-    if (scheduledTime !== '') {
-      data.append('timetosend', scheduledTime);
+    if (schedule.time !== '') {
+      data.append('timetosend', schedule.time);
     }
 
     try {
@@ -80,7 +54,7 @@ function App() {
   };
 
   const sendSMS = async () => {
-    if (!message || !sender) {
+    if (!message) {
       alert("Veuillez fournir tous les détails nécessaires.");
       return;
     }
@@ -93,10 +67,6 @@ function App() {
     }
     setStatus("Tous les SMS ont été planifiés pour envoi!");
   };
-
-  useEffect(() => {
-    // ... useEffect logic for sending messages based on the schedule
-  }, [schedule, messageSent, text]);
 
   const validateAndPrefixNumbers = (numbers) => {
     const validNumbers = [];
@@ -122,17 +92,21 @@ function App() {
     saveAs(blob, 'invalid_numbers.txt');
   };
 
+  const handleScheduleChange = (field) => (e) => {
+    setSchedule({ ...schedule, [field]: e.target.value });
+  };
+
   return (
     <div className="App p-5">
       <h1>SMS BERNABE</h1>
-      <form onSubmit={sendSMS}>
+      <form onSubmit={(e) => { e.preventDefault(); sendSMS(); }}>
         <textarea
           className="form-control mb-3"
-          placeholder="Enter your message here"
+          placeholder="Entrez votre message ici"
           cols={60}
           rows={10}
-          value={text}
-          onChange={handleChangeText}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
         />
         <ExcelUploader onContactsLoaded={setContactNumbers} />
         <input
@@ -148,11 +122,9 @@ function App() {
           onChange={handleScheduleChange('time')}
         />
         <button className="btn btn-success m-3" type="submit">
-          Schedule Send
+          Planifier l'envoi
         </button>
-        {messageSent && (
-          <p>Message scheduled for {schedule.date} at {schedule.time}</p>
-        )}
+        <div>{status}</div>
       </form>
     </div>
   );

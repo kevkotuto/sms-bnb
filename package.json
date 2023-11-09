@@ -6,10 +6,14 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "axios": "^1.6.0",
+    "file-saver": "^2.0.5",
+    "http-proxy-middleware": "^2.0.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -23,6 +27,7 @@
       "react-app/jest"
     ]
   },
+  "proxy": "https://api-public-2.mtarget.fr",
   "browserslist": {
     "production": [
       ">0.2%",
@@ -34,5 +39,6 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+
   }
 }
