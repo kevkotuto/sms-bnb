@@ -1,52 +1,56 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { saveAs } from 'file-saver';
+import React, { useState } from "react";
+import axios from "axios";
+import { saveAs } from "file-saver";
 import ExcelUploader from "./ExcelUpload"; // Assurez-vous que ce composant est correctement importé
+import logo from "./logo_bernabe.png";
 
 function App() {
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [schedule, setSchedule] = useState({ date: "", time: "" });
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState("");
   const [contactNumbers, setContactNumbers] = useState([]);
   const [invalidNumbers, setInvalidNumbers] = useState([]);
+  const [nombreMessages, setNombreMessages] = useState(1);
 
   const sendSMSBatch = async (batch) => {
     const validPrefixedNumbers = validateAndPrefixNumbers(batch);
 
     // Si aucun numéro valide, arrêter le traitement de ce lot
     if (validPrefixedNumbers.length === 0) {
-      setStatus('Aucun numéro valide dans ce lot.');
+      setStatus("Aucun numéro valide dans ce lot.");
       return;
     }
 
-    const url = 'messages';
+    const url = "messages";
     const data = new URLSearchParams({
-      username: 'bernabeci', // Remplacez par vos informations d'identification
-      password: 'Ad6Cxz9aGYpy', // Remplacez par vos informations d'identification
-      msisdn: validPrefixedNumbers.join(','),
+      username: "bernabeci", // Remplacez par vos informations d'identification
+      password: "Ad6Cxz9aGYpy", // Remplacez par vos informations d'identification
+      msisdn: validPrefixedNumbers.join(","),
       msg: message,
-      sender: 'MrBRICOLAGE'
+      sender: "MrBRICOLAGE",
     });
 
-    if (schedule.time !== '') {
-      data.append('timetosend', schedule.time);
+    if (schedule.time !== "") {
+      data.append("timetosend", schedule.time);
     }
 
     try {
       const response = await axios.post(url, data.toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
 
       if (response.status === 200) {
         setStatus(`SMS envoyé avec succès au lot : ${response.data}`);
         console.log(response.data);
       } else {
-        setStatus(`Échec de l'envoi du SMS. Code d'erreur : ${response.status}`);
-        console.log('erreur ',response.data);
+        setStatus(
+          `Échec de l'envoi du SMS. Code d'erreur : ${response.status}`
+        );
+        console.log("erreur ", response.data);
       }
     } catch (error) {
       setStatus(`Erreur lors de l'envoi des SMS : ${error}`);
-      console.log('erreur ',error);
+      console.log("erreur ", error);
     }
     if (invalidNumbers.length > 0) {
       exportInvalidNumbers();
@@ -63,7 +67,7 @@ function App() {
     for (let i = 0; i < contactNumbers.length; i += 500) {
       const batch = contactNumbers.slice(i, i + 500);
       await sendSMSBatch(batch); // Vous pouvez ajouter une gestion d'erreur ici si nécessaire
-      console.log('batch ',batch);
+      console.log("batch ", batch);
     }
     setStatus("Tous les SMS ont été planifiés pour envoi!");
   };
@@ -72,10 +76,12 @@ function App() {
     const validNumbers = [];
     const invalidNums = [];
 
-    numbers.forEach(number => {
+    numbers.forEach((number) => {
       if (
         number.length === 10 &&
-        (number.startsWith('01') || number.startsWith('05') || number.startsWith('07'))
+        (number.startsWith("01") ||
+          number.startsWith("05") ||
+          number.startsWith("07"))
       ) {
         validNumbers.push(`+225${number}`);
       } else {
@@ -83,45 +89,87 @@ function App() {
       }
     });
 
-    setInvalidNumbers(invalidNumbers => [...invalidNumbers, ...invalidNums]);
+    setInvalidNumbers((invalidNumbers) => [...invalidNumbers, ...invalidNums]);
     return validNumbers;
   };
 
   const exportInvalidNumbers = () => {
-    const blob = new Blob([invalidNumbers.join('\n')], { type: 'text/plain;charset=utf-8' });
-    saveAs(blob, 'invalid_numbers.txt');
+    const blob = new Blob([invalidNumbers.join("\n")], {
+      type: "text/plain;charset=utf-8",
+    });
+    saveAs(blob, "invalid_numbers.txt");
   };
 
   const handleScheduleChange = (field) => (e) => {
     setSchedule({ ...schedule, [field]: e.target.value });
   };
 
+  let couleurTexte = "black";
+
+  if (message.length > 160) {
+    couleurTexte = "red";
+  }
+
+  const handleChange = (e) => {
+    const message = e.target.value;
+    setMessage(message);
+
+    const messageLength = message.length;
+
+    if (messageLength <= 160) {
+      setNombreMessages(1);
+    } else {
+      const messages = Math.ceil(messageLength / 160);
+      setNombreMessages(messages);
+    }
+  };
   return (
-    <div className="App p-5">
-      <h1>SMS BERNABE</h1>
-      <form onSubmit={(e) => { e.preventDefault(); sendSMS(); }}>
+    <div className="App p-2 m-1">
+      <h1>
+        <img src={logo} alt="Logo BNB" width={75} height={60} /> SMS BERNABE
+      </h1>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          sendSMS();
+        }}
+      >
         <textarea
           className="form-control mb-3"
           placeholder="Entrez votre message ici"
           cols={60}
           rows={10}
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={handleChange}
+          style={{ color: couleurTexte }}
         />
-        <ExcelUploader onContactsLoaded={setContactNumbers} />
+        <div
+          className="d-flex justify-content-end"
+          style={{ color: "GrayText" }}
+        >
+          {message.length}{" "}
+          {message.length === 0 || message.length === 1
+            ? "caractère"
+            : "caractères"}{" "}
+          / {nombreMessages} {nombreMessages === 1 ? "message" : "messages"}
+        </div>
+
+        <div className="form-control m-2">
+          <ExcelUploader onContactsLoaded={setContactNumbers} />
+        </div>
         <input
           type="date"
-          className="form-control"
+          className="form-control m-2"
           value={schedule.date}
-          onChange={handleScheduleChange('date')}
+          onChange={handleScheduleChange("date")}
         />
         <input
           type="time"
-          className="form-control"
+          className="form-control m-2"
           value={schedule.time}
-          onChange={handleScheduleChange('time')}
+          onChange={handleScheduleChange("time")}
         />
-        <button className="btn btn-success m-3" type="submit">
+        <button className="btn btn-primary m-3" type="submit">
           Planifier l'envoi
         </button>
         <div>{status}</div>
