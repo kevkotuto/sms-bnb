@@ -2,15 +2,14 @@ import React, { useState } from "react";
 import axios from "axios";
 import { saveAs } from "file-saver";
 import ExcelUploader from "./ExcelUpload"; // Assurez-vous que ce composant est correctement importé
-import logo from "./logo_bernabe.png";
-
+import logobnb from "./logo_bernabe.png";
+import logotb from "./logo_technibat.png";
 function App() {
   const [message, setMessage] = useState("");
   const [schedule, setSchedule] = useState({ date: "", time: "" });
   const [status, setStatus] = useState("");
   const [contactNumbers, setContactNumbers] = useState([]);
   const [invalidNumbers, setInvalidNumbers] = useState([]);
-  const [nombreMessages, setNombreMessages] = useState(1);
 
   const sendSMSBatch = async (batch) => {
     const validPrefixedNumbers = validateAndPrefixNumbers(batch);
@@ -113,20 +112,13 @@ function App() {
   const handleChange = (e) => {
     const message = e.target.value;
     setMessage(message);
-
-    const messageLength = message.length;
-
-    if (messageLength <= 160) {
-      setNombreMessages(1);
-    } else {
-      const messages = Math.ceil(messageLength / 160);
-      setNombreMessages(messages);
-    }
   };
   return (
     <div className="App p-2 m-1">
       <h1>
-        <img src={logo} alt="Logo BNB" width={75} height={60} /> SMS BERNABE
+        <img src={logobnb} alt="Logo BNB" width={70} height={65} />|
+        <img src={logotb} alt="Logo TB" width={70} height={65} />
+        SMS BERNABE
       </h1>
       <form
         onSubmit={(e) => {
@@ -144,32 +136,31 @@ function App() {
           style={{ color: couleurTexte }}
         />
         <div
-          className="d-flex justify-content-end"
+          className="d-flex justify-content-end mb-3"
           style={{ color: "GrayText" }}
         >
           {message.length}{" "}
           {message.length === 0 || message.length === 1
             ? "caractère"
-            : "caractères"}{" "}
-          / {nombreMessages} {nombreMessages === 1 ? "message" : "messages"}
+            : "caractères"}
         </div>
 
-        <div className="form-control m-2">
+        <div className="form-control m-2 mb-3">
           <ExcelUploader onContactsLoaded={setContactNumbers} />
         </div>
         <input
           type="date"
-          className="form-control m-2"
+          className="form-control m-2 mb-3"
           value={schedule.date}
           onChange={handleScheduleChange("date")}
         />
         <input
           type="time"
-          className="form-control m-2"
+          className="form-control m-2 mb-3"
           value={schedule.time}
           onChange={handleScheduleChange("time")}
         />
-        <button className="btn btn-primary m-3" type="submit">
+        <button className="btn btn-primary m-3 mb-3" type="submit">
           Planifier l'envoi
         </button>
         <div>{status}</div>
